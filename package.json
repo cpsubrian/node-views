@@ -1,0 +1,22 @@
+{
+  "name": "views",
+  "version": "0.0.0",
+  "description": "Views registry and rendering",
+  "main": "views.js",
+  "scripts": {
+    "test": "./node_modules/.bin/mocha --reporter spec"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/cpsubrian/views.git"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "~1.4.0"
+  },
+  "keywords": [
+    "views", "templates", "render", "partials"
+  ],
+  "author": "Brian Link",
+  "license": "MIT"
+}
