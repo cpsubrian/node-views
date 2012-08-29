@@ -27,5 +27,8 @@
     "views", "templates", "render", "partials"
   ],
   "author": "Brian Link",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": ">= 0.8.0"
+  }
 }
