@@ -10,9 +10,17 @@
     "type": "git",
     "url": "git://github.com/cpsubrian/views.git"
   },
-  "dependencies": {},
+  "dependencies": {
+    "async": "~0.1.22",
+    "consolidate": "~0.4.0",
+    "underscore": "~1.3.3",
+    "proto-list-deep": "0.0.1",
+    "glob": "~3.1.12",
+    "clone": "~0.1.0"
+  },
   "devDependencies": {
-    "mocha": "~1.4.0"
+    "mocha": "~1.4.0",
+    "request": "~2.10.0"
   },
   "keywords": [
     "views", "templates", "render", "partials"
