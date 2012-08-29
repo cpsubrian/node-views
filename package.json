@@ -20,7 +20,8 @@
   },
   "devDependencies": {
     "mocha": "~1.4.0",
-    "request": "~2.10.0"
+    "request": "~2.10.0",
+    "handlebars": "~1.0.6-2"
   },
   "keywords": [
     "views", "templates", "render", "partials"

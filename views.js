@@ -1,6 +1,9 @@
 var path = require('path'),
+    fs = require('fs'),
+    existsSync = fs.existsSync || path.existsSync,
     url = require('url'),
     util = require('util'),
+    async = require('async'),
     clone = require('clone'),
     cons = require('consolidate'),
     ProtoListDeep = require('proto-list-deep'),
@@ -8,6 +11,24 @@ var path = require('path'),
 
 exports.createRegistry = function(options) {
   return new Views(options);
+};
+exports.middleware = function(options) {
+  var views = new Views(options);
+  return function(req, res, next) {
+    res.render = views.render.bind(views, req, res);
+    res.renderStatus = views.renderStatus.bind(views, req, res);
+    next();
+  };
+};
+exports.flatiron = function(options) {
+  var app = this;
+  app.views = new Views(options);
+  if (app.router) {
+    app.router.attach(function() {
+      this.render = app.views.render.bind(app.views, this.req, this.res);
+      this.renderStatus = renderStatus.bind(app.views, this.req, this.res);
+    });
+  }
 };
 exports.Views = Views;
 
@@ -35,13 +56,13 @@ function Views(options) {
 /**
  * Cached url parser.
  */
-Views.prototype._parseUrl = function(url) {
-  var parsed = this._parsedUrls[url];
+Views.prototype._parseUrl = function(urlToParse) {
+  var parsed = this._parsedUrls[urlToParse];
   if (parsed) {
     return parsed;
   }
   else {
-    return _parsedUrls[url] = url.parse(url);
+    return this._parsedUrls[urlToParse] = url.parse(urlToParse);
   }
 };
 
@@ -89,18 +110,21 @@ Views.prototype.render = function(req, res, view, options, cb) {
 
   // Merge options into conf.
   if (options) {
-    conf.unshift(options);
+    conf.unshift(clone(options));
   }
 
   // Default render callback.
   cb = cb || function(err, str) {
-    var layout = conf.get('layout');
-    var layoutOpts = {content: str, layout: layout};
+    var layout = conf.get('layout'),
+        layoutConf = clone(conf),
+        template;
+
+    layoutConf.unshift({content: str, layout: layout});
 
     // If we have a layout, and this is not the layout, render this
     // content inside the layout.
-    if (layout && view !== layout && views.find(layout, layoutOpts)) {
-      self.render(layout, layoutOpts);
+    if (layout && view !== layout && views.find(layout, layoutConf)) {
+      views.render(req, res, layout, layoutConf.deep());
     }
     else {
       res.writeHeader(200, {"Content-Type": "text/html"});
@@ -117,13 +141,18 @@ Views.prototype.render = function(req, res, view, options, cb) {
       if (err) throw err;
       views._processPartials(req, res, conf, function(err) {
         if (err) throw err;
-        cons[conf.get('engine')](template, conf.deepSnapshot, cb);
+        cons[conf.get('engine')](template, conf.deep(), cb);
       });
     });
   }
   else {
     cb(new Error('Could not find the requested view: ' + view));
   }
+};
+
+// Placeholder partials.
+Views.prototype._processPartials = function(req, res, conf, cb) {
+  cb(null);
 };
 
 /**
@@ -146,11 +175,158 @@ Views.prototype.renderStatus = function(req, res, code, message) {
   res.statusCode = code;
 
   try {
-    this.render('status-' + code, {message: message});
+    this.render(req, res, 'status-' + code, {message: message});
   }
   catch (err) {
     res.end(message);
   }
+};
+
+/**
+ * Register a views namespace.
+ *
+ * A views namespace associates a template prefix with a root directory
+ * and some default options. A great use-case for multiple views
+ * namespaces is when application plugins would like to expose views that
+ * the main app can render.
+ *
+ * @param prefix {String} A template path prefix, no trailing slash.
+ * @param root {String} The absolute path to directoy of views being
+ *   registered.
+ * @param opts {Object} Default options for all the views in this directory.
+ *   Typically, this would include a custom templating engine and extension.
+ */
+Views.prototype.register = function(prefix, root, opts) {
+  var views = this,
+      reg = this._registry,
+      cache = this._cache;
+
+  if (arguments.length < 3) {
+    opts = root;
+    root = prefix;
+    prefix = '';
+  }
+  opts = opts || {};
+
+  // Confirm the root path exists.
+  if (existsSync(root)) {
+    // If a layout was passed in the options, confirm it exists.
+    if (opts.layout) {
+      if (!existsSync(path.join(root, opts.layout + '.' + opts.ext))) {
+        // Its ok if the default doesn't exist.
+        if (opts.layout === 'layout') {
+          opts.layout = false;
+        }
+        else {
+          throw new Error('The layout does not exist (' + opts.layout + ').');
+        }
+      }
+    }
+
+    // Add the new namespace.
+    reg.push({
+      prefix: prefix,
+      root: root,
+      opts: opts || {}
+    });
+
+    // Clear the cache.
+    cache = {};
+  }
+  else {
+    throw new Error('Path does not exist for view namespace: ' + prefix);
+  }
+};
+
+/**
+ * Find the real path to a template.
+ *
+ * Fetch the path for a view, searching through all registered namespaces.
+ * Namespaces are searched in reverse order of their registration.
+ * Also, merges in the namespace default options.
+ *
+ * @param target {String} A namespaced (prefix) path to a view.
+ * @param opts {Object} An options object that will have the namespace
+ *   defaults merged in.
+ */
+Views.prototype.find = function(target, conf) {
+  var key, check, namespace, regex, full, ext, tempOpts;
+  var reg = this._registry;
+  var cache = this._cache;
+
+  // Create a unique key for this target (vary on extension if supplied).
+  key = target;
+  if (conf.get('ext')) {
+    key = key + ':' + conf.get('ext');
+  }
+
+  // Check if the path exsts in the cache.
+  if (!cache[key]) {
+    // Loop through registered namespaces and check if our path matches one.
+    check = reg.slice(0);
+    while (namespace = check.pop()) {
+      // Check for existence of the namespace prefix.
+      if (target.indexOf(namespace.prefix) === 0) {
+        regex = new RegExp(namespace.prefix + '\/?');
+        ext = conf.get('ext') || namespace.opts.ext;
+        full = path.resolve(namespace.root, target.replace(regex, '')) + '.' + ext;
+        if (existsSync(full)) {
+          cache[key] = {
+            path: full,
+            opts: clone(namespace.opts)
+          };
+          break;
+        }
+      }
+    }
+  }
+
+  if (cache[key]) {
+    // Add the namespace default options.
+    conf.push(cache[key].opts);
+
+    // Return the path to the view.
+    return cache[key].path;
+  }
+  else {
+    throw new Error('No registered views matched the path: ' + target);
+  }
+};
+
+/**
+ * Find a views directory.
+ *
+ * Fetch the full path to a views directory, searching through all registered
+ * namespaces.  Namespaces are searched in reverse order of their
+ * registration.
+ *
+ * @param target {String} A namespaced (prefix) path to a views directory.
+ */
+Views.prototype.findDir = function(target) {
+  var namespace, regex, full, stats;
+  var reg = this._registry;
+  var cache = this._cache;
+
+  // Check if the path exsts in the cache.
+  if (!cache[target]) {
+    for (var i = reg.length - 1; i >= 0; i--) {
+      namespace = reg[i];
+      // Check for the existence of the namespace prefix.
+      if (target.indexOf(namespace.prefix) === 0) {
+        regex = new RegExp(namespace.prefix + '\/?');
+        full = path.resolve(namespace.root, target.replace(regex, ''));
+        if (existsSync(full)) {
+          // Check if it is an actual directory.
+          if (fs.statSync(full).isDirectory()) {
+            cache[target] = full;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return cache[target] || false;
 };
 
 /**
@@ -219,7 +395,7 @@ Views.prototype._processHelpers = function(req, res, conf, callback) {
   // Check for cached helpers data for this requests so we don't run
   // them more than once.
   if (req._viewsHelpersData) {
-    conf.push(req._viewsHelpersData);
+    conf.push(clone(req._viewsHelpersData));
     return callback(null);
   }
 
@@ -228,7 +404,7 @@ Views.prototype._processHelpers = function(req, res, conf, callback) {
       views._helpers[match].forEach(function(helper) {
         tasks.push(function(done) {
           if (typeof helper === 'function') {
-            helper.call(self, function(err, data) {
+            helper.call(views, function(err, data) {
               if (data) {
                 helpers.push(data);
               }
@@ -246,9 +422,9 @@ Views.prototype._processHelpers = function(req, res, conf, callback) {
 
   async.parallel(tasks, function(err) {
     if (err) return callback(err);
-    var processed = views._processHelpersJSON(helpers.deepSnapshot);
+    var processed = views._processHelpersJSON(helpers.deep());
     conf.push(processed);
-    self.req._viewsHelpersData = processed;
+    req._viewsHelpersData = processed;
     callback(err);
   });
 };
@@ -276,153 +452,4 @@ Views.prototype._processHelpersJSON = function(data) {
   }
   return data;
 };
-
-/**
- * Register a views namespace.
- *
- * A views namespace associates a template prefix with a root directory
- * and some default options. A great use-case for multiple views
- * namespaces is when application plugins would like to expose views that
- * the main app can render.
- *
- * @param prefix {String} A template path prefix, no trailing slash.
- * @param root {String} The absolute path to directoy of views being
- *   registered.
- * @param opts {Object} Default options for all the views in this directory.
- *   Typically, this would include a custom templating engine and extension.
- */
-Views.prototype.register = function(prefix, root, opts) {
-  var views = this,
-      reg = this._registry,
-      cache = this._cache;
-
-  if (arguments.length < 3) {
-    root = prefix;
-    opts = root;
-    prefix = '';
-  }
-  opts = opts || {};
-
-  // Confirm the root path exists.
-  if (path.existsSync(root)) {
-    // If a layout was passed in the options, confirm it exists.
-    if (opts.layout) {
-      if (!path.existsSync(path.join(root, opts.layout + '.' + opts.ext))) {
-        // Its ok if the default doesn't exist.
-        if (opts.layout === 'layout') {
-          opts.layout = false;
-        }
-        else {
-          throw new Error('The layout does not exist (' + opts.layout + ').');
-        }
-      }
-    }
-
-    // Add the new namespace.
-    reg.push({
-      prefix: prefix,
-      root: root,
-      opts: opts || {}
-    });
-
-    // Clear the cache.
-    cache = {};
-  }
-  else {
-    throw new Error('Path does not exist for view namespace: ' + prefix);
-  }
-};
-
-/**
- * Find the real path to a template.
- *
- * Fetch the path for a view, searching through all registered namespaces.
- * Namespaces are searched in reverse order of their registration.
- * Also, merges in the namespace default options.
- *
- * @param target {String} A namespaced (prefix) path to a view.
- * @param opts {Object} An options object that will have the namespace
- *   defaults merged in.
- */
-Views.prototype.find = function(target, opts) {
-  var key, namespace, regex, full, ext, tempOpts;
-  var reg = this._registry;
-  var cache = this._cache;
-
-  // Create a unique key for this target (vary on extension if supplied).
-  key = target;
-  if (opts.ext) {
-    key = key + ':' + opts.ext;
-  }
-
-  // Check if the path exsts in the cache.
-  if (!cache[key]) {
-    // Loop through registered namespaces and check if our path matches one.
-    for (var i = reg.length - 1; i >= 0; i--) {
-      namespace = reg[i];
-      // Check for existence of the namespace prefix.
-      if (target.indexOf(namespace.prefix) === 0) {
-        regex = new RegExp(namespace.prefix + '\/?');
-        ext = opts.ext || namespace.opts.ext;
-        full = path.resolve(namespace.root, target.replace(regex, '')) + '.' + ext;
-        if (path.existsSync(full)) {
-          cache[key] = {
-            path: full,
-            opts: clone(namespace.opts)
-          };
-          break;
-        }
-      }
-    }
-  }
-
-  if (cache[key]) {
-    // Merge in the namespace default options.
-    _.defaults(opts, cache[key].opts);
-
-    // Return the path to the view.
-    return cache[key].path;
-  }
-  else {
-    throw new Error('No registered views matched the path: ' + target);
-  }
-};
-
-/**
- * Find a views directory.
- *
- * Fetch the full path to a views directory, searching through all registered
- * namespaces.  Namespaces are searched in reverse order of their
- * registration.
- *
- * @param target {String} A namespaced (prefix) path to a views directory.
- */
-Views.prototype.findDir = function(target) {
-  var namespace, regex, full, stats;
-  var reg = this._registry;
-  var cache = this._cache;
-
-  // Check if the path exsts in the cache.
-  if (!cache[target]) {
-    for (var i = reg.length - 1; i >= 0; i--) {
-      namespace = reg[i];
-      // Check for the existence of the namespace prefix.
-      if (target.indexOf(namespace.prefix) === 0) {
-        regex = new RegExp(namespace.prefix + '\/?');
-        full = path.resolve(namespace.root, target.replace(regex, ''));
-        if (path.existsSync(full)) {
-          // Check if it is an actual directory.
-          if (fs.statSync(full).isDirectory()) {
-            cache[target] = full;
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  return cache[target] || false;
-};
-
-
 

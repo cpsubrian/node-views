@@ -2,6 +2,7 @@ var assert = require('assert'),
     path = require('path'),
     request = require('request'),
     http = require('http'),
+    ProtoListDeep = require('proto-list-deep'),
     lib = require('../');
 
 describe('Rendering & Helpers', function() {
@@ -12,7 +13,7 @@ describe('Rendering & Helpers', function() {
   // Create a fresh server and registry before each test.
   beforeEach(function(done) {
     views = lib.createRegistry();
-    views.register(path.join(__dirname, 'fixtures'));
+    views.register(path.join(__dirname, 'fixtures/views'));
     server = http.createServer();
     server.listen(port, done);
   });
@@ -84,18 +85,13 @@ describe('Rendering & Helpers', function() {
   it('should respect String path-specific helpers', function(done) {
     views.helper('/hey', {name: 'Donatello'});
     server.on('request', function(req, res) {
-      if (req.url === '/don') {
-        views.render(req, res, 'hello');
-      }
-      else {
-        views.render(req, res, 'hello');
-      }
+      views.render(req, res, 'hello');
     });
-    request('http://localhost:' + port + '/', function(err, res, body) {
+    request('http://localhost:' + port + '/hey', function(err, res, body) {
       assert.ifError(err);
       assert.equal(body, '<html><body><h1>Hello Donatello</h1></body></html>', 'template was rendered incorrectly');
 
-      request('http://localhost:' + port + '/hey', function(err, res, body) {
+      request('http://localhost:' + port + '/', function(err, res, body) {
         assert.ifError(err);
         assert.equal(body, '<html><body><h1>Hello </h1></body></html>', 'template was rendered incorrectly');
         done();
@@ -106,18 +102,13 @@ describe('Rendering & Helpers', function() {
   it('should respect RegExp path-specific helpers', function(done) {
     views.helper(/^\/hello$/, {name: 'Donatello'});
     server.on('request', function(req, res) {
-      if (req.url === '/hey') {
-        views.render(req, res, 'hello');
-      }
-      else {
-        views.render(req, res, 'hello');
-      }
+      views.render(req, res, 'hello');
     });
-    request('http://localhost:' + port + '/', function(err, res, body) {
+    request('http://localhost:' + port + '/hello', function(err, res, body) {
       assert.ifError(err);
       assert.equal(body, '<html><body><h1>Hello Donatello</h1></body></html>', 'template was rendered incorrectly');
 
-      request('http://localhost:' + port + '/hey', function(err, res, body) {
+      request('http://localhost:' + port + '/', function(err, res, body) {
         assert.ifError(err);
         assert.equal(body, '<html><body><h1>Hello </h1></body></html>', 'template was rendered incorrectly');
         done();
@@ -152,41 +143,31 @@ describe('Rendering & Helpers', function() {
             don: 'bow'
           }
         },
-        result = {},
+        result = new ProtoListDeep(),
         scope = null,
         all = {
           weapons: {
             leo: 'sword',
             don: 'bow',
-            raph: 'sai',
-            mike: 'nunchuck'
+            raph: 'sai'
           }
         };
 
     views.helper(data);
     views.helper(function(cb) {
-      if (!ran) {
-        ran = true;
-        cb(null, {
-          weapons: {
-            raph: 'sai'
-          }
-        });
-      }
-      else {
-        cb(null, {
-          weapons: {
-            mike: 'nunchuck'
-          }
-        });
-      }
+      cb(null, {
+        weapons: {
+          raph: 'sai'
+        }
+      });
     });
 
     var req = {url: '/'};
     var res = {};
     views._processHelpers(req, res, result, function(err) {
+      // Trigget cached view helpers cloning and merging.
       views._processHelpers(req, res, result, function(err) {
-        assert.deepEqual(result, all);
+        assert.deepEqual(result.deep(), all);
         assert.notDeepEqual(data, all);
         done();
       });
