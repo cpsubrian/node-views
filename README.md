@@ -4,17 +4,16 @@ node-views
 Views registry and rendering for node.js.
 
 
-Developed by [Terra Eclipse](http://www.terraeclipse.com)
---------------------------------------------------------
+- - -
+
+### Developed by [Terra Eclipse](http://www.terraeclipse.com)
 Terra Eclipse, Inc. is a nationally recognized political technology and
 strategy firm located in Aptos, CA and Washington, D.C.
 
-[http://www.terraeclipse.com](http://www.terraeclipse.com)
+- - -
 
-
-License: MIT
-------------
-Copyright (C) 2012 Terra Eclipse, Inc.
+### License: MIT
+Copyright (C) 2012 Terra Eclipse, Inc. ([http://www.terraeclipse.com](http://www.terraeclipse.com))
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
