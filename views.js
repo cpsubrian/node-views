@@ -15,8 +15,9 @@ exports.createRegistry = function(options) {
   return new Views(options);
 };
 // Use a views registry as middleware.  Adds res.render() and res.renderStatus()
-exports.middleware = function(options) {
+exports.middleware = function(root, options) {
   var views = new Views(options);
+  views.register(root);
   return function(req, res, next) {
     res.render = views.render.bind(views, req, res);
     res.renderStatus = views.renderStatus.bind(views, req, res);
@@ -25,11 +26,12 @@ exports.middleware = function(options) {
 };
 // Use views registry in a flatiron app. Attaches render() and renderStatus() to
 // router scope.
-exports.flatiron = function(options) {
+exports.flatiron = function(root, options) {
   return {
     attach: function() {
       var app = this;
       app.views = new Views(options);
+      app.views.register(root);
       if (app.router) {
         app.router.attach(function() {
           this.render = views.render.bind(app.views, this.req, this.res);
@@ -104,6 +106,7 @@ Views.prototype._stringifyPath = function(path) {
  */
 Views.prototype.render = function(req, res, view, options, cb) {
   var views = this,
+      defaults = clone(this.conf),
       conf = clone(this.conf),
       tasks = [];
 
@@ -125,9 +128,10 @@ Views.prototype.render = function(req, res, view, options, cb) {
   // Default render callback.
   cb = cb || function(err, str) {
     var layout = conf.get('layout'),
-        layoutConf = clone(views.conf),
+        layoutConf = clone(defaults),
         template;
 
+    layoutConf.push(conf.deep());
     layoutConf.unshift({content: str, layout: layout});
 
     // If we have a layout, and this is not the layout, render this

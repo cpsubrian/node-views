@@ -34,6 +34,17 @@ describe('Rendering & Helpers', function() {
     });
   });
 
+  it('should be able to render data in the layout', function(done) {
+    server.on('request', function(req, res) {
+      views.render(req, res, 'hello', {name: 'Donatello', optional: 'Greeting:'});
+    });
+    request('http://localhost:' + port + '/', function(err, res, body) {
+      assert.ifError(err);
+      assert.equal(body, '<html><body>Greeting:<h1>Hello Donatello</h1></body></html>', 'template was rendered incorrectly');
+      done();
+    });
+  });
+
   it('should be able to render templates with static helpers', function(done) {
     views.helper({name: 'Donatello'});
     server.on('request', function(req, res) {
