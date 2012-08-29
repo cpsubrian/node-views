@@ -116,21 +116,29 @@ Views.prototype.render = function(req, res, view, options, cb) {
   // Default render callback.
   cb = cb || function(err, str) {
     var layout = conf.get('layout'),
-        layoutConf = clone(conf),
+        layoutConf = clone(views.conf),
         template;
 
     layoutConf.unshift({content: str, layout: layout});
 
     // If we have a layout, and this is not the layout, render this
     // content inside the layout.
-    if (layout && view !== layout && views.find(layout, layoutConf)) {
-      views.render(req, res, layout, layoutConf.deep());
+    if (layout && view !== layout) {
+      try {
+        views.render(req, res, layout, layoutConf.deep());
+        return;
+      }
+      catch (e) {
+        if (e.code !== 'ENOENT') {
+          throw e;
+        }
+      }
     }
-    else {
-      res.writeHeader(200, {"Content-Type": "text/html"});
-      res.write(str);
-      res.end();
-    }
+
+    // Fallback to writing the content as html.
+    res.writeHeader(200, {"Content-Type": "text/html"});
+    res.write(str);
+    res.end();
   };
 
   // Find the full path to the template.
@@ -201,12 +209,21 @@ Views.prototype.register = function(prefix, root, opts) {
       reg = this._registry,
       cache = this._cache;
 
-  if (arguments.length < 3) {
-    opts = root;
+  if (arguments.length < 2) {
     root = prefix;
     prefix = '';
+    opts = {};
   }
-  opts = opts || {};
+  if (arguments.length < 3) {
+    if (typeof root !== 'string') {
+      opts = root;
+      root = prefix;
+      prefix = '';
+    }
+    else {
+      opts = {};
+    }
+  }
 
   // Confirm the root path exists.
   if (existsSync(root)) {
@@ -254,6 +271,13 @@ Views.prototype.find = function(target, conf) {
   var reg = this._registry;
   var cache = this._cache;
 
+  // Convert conf to a ProtoListDeep if its an object literal.
+  if (!(conf instanceof ProtoListDeep)) {
+    var temp = clone(conf);
+    conf = new ProtoListDeep();
+    conf.push(temp);
+  }
+
   // Create a unique key for this target (vary on extension if supplied).
   key = target;
   if (conf.get('ext')) {
@@ -289,7 +313,9 @@ Views.prototype.find = function(target, conf) {
     return cache[key].path;
   }
   else {
-    throw new Error('No registered views matched the path: ' + target);
+    var err = new Error('No registered views matched the path: ' + target);
+    err.code = 'ENOENT';
+    throw err;
   }
 };
 
