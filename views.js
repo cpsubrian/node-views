@@ -10,9 +10,11 @@ var path = require('path'),
     ProtoListDeep = require('proto-list-deep'),
     _ = require('underscore');
 
+// Create a views registry to use manually.
 exports.createRegistry = function(options) {
   return new Views(options);
 };
+// Use a views registry as middleware.  Adds res.render() and res.renderStatus()
 exports.middleware = function(options) {
   var views = new Views(options);
   return function(req, res, next) {
@@ -21,15 +23,21 @@ exports.middleware = function(options) {
     next();
   };
 };
+// Use views registry in a flatiron app. Attaches render() and renderStatus() to
+// router scope.
 exports.flatiron = function(options) {
-  var app = this;
-  app.views = new Views(options);
-  if (app.router) {
-    app.router.attach(function() {
-      this.render = views.render.bind(app.views, this.req, this.res);
-      this.renderStatus = renderStatus.bind(app.views, this.req, this.res);
-    });
-  }
+  return {
+    attach: function() {
+      var app = this;
+      app.views = new Views(options);
+      if (app.router) {
+        app.router.attach(function() {
+          this.render = views.render.bind(app.views, this.req, this.res);
+          this.renderStatus = renderStatus.bind(app.views, this.req, this.res);
+        });
+      }
+    }
+  };
 };
 exports.Views = Views;
 
