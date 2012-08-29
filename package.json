@@ -1,6 +1,6 @@
 {
   "name": "views",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Views registry and rendering",
   "main": "views.js",
   "scripts": {
