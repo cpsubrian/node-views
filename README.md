@@ -75,7 +75,7 @@ var views = require('views').createRegistry({
 views.register(path.join(__dirname, 'views'));
 
 // Register an alternate namespace with custom options.
-views.register(path.join(__dirname, 'jade_views', {ext: 'html', engine: 'jade'}));
+views.register('jade', path.join(__dirname, 'jade_views'), {ext: 'html', engine: 'jade'});
 
 // By default a 'partials' subdirectory in each namespace will be used, however,
 // you can register additional partials directories.
