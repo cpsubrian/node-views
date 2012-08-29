@@ -6,6 +6,7 @@ var path = require('path'),
     async = require('async'),
     clone = require('clone'),
     cons = require('consolidate'),
+    glob = require('glob'),
     ProtoListDeep = require('proto-list-deep'),
     _ = require('underscore');
 
@@ -25,7 +26,7 @@ exports.flatiron = function(options) {
   app.views = new Views(options);
   if (app.router) {
     app.router.attach(function() {
-      this.render = app.views.render.bind(app.views, this.req, this.res);
+      this.render = views.render.bind(app.views, this.req, this.res);
       this.renderStatus = renderStatus.bind(app.views, this.req, this.res);
     });
   }
@@ -158,11 +159,6 @@ Views.prototype.render = function(req, res, view, options, cb) {
   }
 };
 
-// Placeholder partials.
-Views.prototype._processPartials = function(req, res, conf, cb) {
-  cb(null);
-};
-
 /**
  * Render a status code page.
  *
@@ -249,6 +245,9 @@ Views.prototype.register = function(prefix, root, opts) {
 
     // Clear the cache.
     cache = {};
+
+    // Register the default partials location.
+    views.partials('partials');
   }
   else {
     throw new Error('Path does not exist for view namespace: ' + prefix);
@@ -337,6 +336,7 @@ Views.prototype.findDir = function(target) {
   if (!cache[target]) {
     for (var i = reg.length - 1; i >= 0; i--) {
       namespace = reg[i];
+
       // Check for the existence of the namespace prefix.
       if (target.indexOf(namespace.prefix) === 0) {
         regex = new RegExp(namespace.prefix + '\/?');
@@ -479,3 +479,126 @@ Views.prototype._processHelpersJSON = function(data) {
   return data;
 };
 
+/**
+ * Register partials.
+ *
+ * @param [match] {String|RegExp} A string or regex to limit partial rendering
+ *   to matching urls.
+ * @param source {String} The path to a directory of views.  Registered
+ *   namespaces will be honored. The directory will be recursively searched
+ *   for views matching options.ext,  and those will be rendered and attached
+ *   to the template data as properties matching the filename with the
+ *   extension stripped.
+ */
+Views.prototype.partials = function(match, source) {
+  var views = this,
+      conf = views.conf,
+      dir, view, parts, assign, last;
+
+  if (arguments.length === 1) {
+    source = match;
+    match = /.*/;
+  }
+
+  match = views._stringifyPath(match);
+  views._partials[match] = views._partials[match] || {};
+
+  // Get the full path to the source (apply registered namespace).
+  dir = views.findDir(source);
+  if (dir) {
+    glob.sync(dir + '/**/*.*').forEach(function(file) {
+      file = file.replace(dir + '/', '');
+      view = file.replace('.' + conf.get('ext'), '');
+      parts = view.replace(new RegExp(dir + '\/?'), '').split('/');
+
+      assign = views._partials[match];
+      last = parts.pop();
+      parts.forEach(function(part) {
+        assign[part] = assign[part] || {};
+        assign = assign[part];
+      });
+      assign[last] = path.join(dir, file);
+    });
+  }
+};
+
+/**
+ * Process the app partials, rendering them and merging them with the passed
+ * templateData object.
+ *
+ * Should be invoked in the router scope.
+ *
+ * @param templateData {Object} The template data object to extend.
+ * @param callback {Function} A callback to once the partials have been
+ *   processed.
+ */
+Views.prototype._processPartials = function(req, res, conf, callback) {
+  var views = this,
+      tasks = [],
+      reqPath = views._parseUrl(req.url).pathname;
+
+  // Check for cached partials for this requests so we don't run
+  // them more than once.
+  if (req._partialsData) {
+    conf.push(clone(req._partialsData));
+    return callback(null);
+  }
+
+  // Loop through partials and render the ones that match the req url.
+  Object.keys(views._partials).forEach(function(match) {
+    var partials = views._partials[match];
+    if (reqPath.match(new RegExp(match))) {
+      tasks.push(function(done) {
+        views._renderPartials(partials, conf, done);
+      });
+    }
+  });
+  if (tasks.length) {
+    async.parallel(tasks, function(err, results) {
+      if (err) throw err;
+      req._partialsData = {};
+      results.forEach(function(result) {
+        _.defaults(req._partialsData, result);
+      });
+      conf.push(clone(req._partialsData));
+      return callback(err);
+    });
+  }
+  else {
+    return callback(null);
+  }
+};
+
+/**
+ * Recursively loop through partials and render them.
+ *
+ * @param  partials {Object} The top-level partials to render.
+ * @param  templateData {Object} The template data object to extend.
+ * @param  callback {Function} A callback to invoke after all the partials
+ *   have been rendered and merged into the template data.
+ */
+Views.prototype._renderPartials = function(partials, conf, callback) {
+  var views = this,
+      defaultConf = clone(this.conf),
+      tasks = {};
+
+  Object.keys(partials).forEach(function(key) {
+    var partial = partials[key];
+    if (typeof partial === 'object') {
+      // Recurse
+      tasks[key] = function(done) {
+        views._renderPartials(partial, conf, done);
+      };
+    }
+    else {
+      // Render
+      tasks[key] = function(done) {
+        cons[defaultConf.get('engine')](partial, conf.deep(), done);
+      };
+    }
+  });
+
+  async.parallel(tasks, function(err, results) {
+    callback(null, results);
+  });
+};

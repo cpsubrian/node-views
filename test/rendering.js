@@ -84,6 +84,7 @@ describe('Rendering & Helpers', function() {
 
   it('should respect String path-specific helpers', function(done) {
     views.helper('/hey', {name: 'Donatello'});
+    views.helper({name: 'Leonardo'});
     server.on('request', function(req, res) {
       views.render(req, res, 'hello');
     });
@@ -93,7 +94,7 @@ describe('Rendering & Helpers', function() {
 
       request('http://localhost:' + port + '/', function(err, res, body) {
         assert.ifError(err);
-        assert.equal(body, '<html><body><h1>Hello </h1></body></html>', 'template was rendered incorrectly');
+        assert.equal(body, '<html><body><h1>Hello Leonardo</h1></body></html>', 'template was rendered incorrectly');
         done();
       });
     });
@@ -101,6 +102,7 @@ describe('Rendering & Helpers', function() {
 
   it('should respect RegExp path-specific helpers', function(done) {
     views.helper(/^\/hello$/, {name: 'Donatello'});
+    views.helper({name: 'Leonardo'});
     server.on('request', function(req, res) {
       views.render(req, res, 'hello');
     });
@@ -110,7 +112,7 @@ describe('Rendering & Helpers', function() {
 
       request('http://localhost:' + port + '/', function(err, res, body) {
         assert.ifError(err);
-        assert.equal(body, '<html><body><h1>Hello </h1></body></html>', 'template was rendered incorrectly');
+        assert.equal(body, '<html><body><h1>Hello Leonardo</h1></body></html>', 'template was rendered incorrectly');
         done();
       });
     });
