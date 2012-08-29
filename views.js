@@ -30,12 +30,12 @@ exports.flatiron = function(root, options) {
   return {
     attach: function() {
       var app = this;
-      app.views = new Views(options);
+      var views = app.views = new Views(options);
       app.views.register(root);
       if (app.router) {
         app.router.attach(function() {
-          this.render = views.render.bind(app.views, this.req, this.res);
-          this.renderStatus = renderStatus.bind(app.views, this.req, this.res);
+          this.render = views.render.bind(views, this.req, this.res);
+          this.renderStatus = views.renderStatus.bind(views, this.req, this.res);
         });
       }
     }
@@ -149,7 +149,7 @@ Views.prototype.render = function(req, res, view, options, cb) {
     }
 
     // Fallback to writing the content as html.
-    res.writeHeader(200, {"Content-Type": "text/html"});
+    res.writeHead(200, {"Content-Type": "text/html"});
     res.write(str);
     res.end();
   };
