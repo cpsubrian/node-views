@@ -3,6 +3,8 @@ node-views
 
 Views registry and rendering for node.js.
 
+[![build status](https://secure.travis-ci.org/cpsubrian/node-views.png)](http://travis-ci.org/cpsubrian/node-views)
+
 
 - - -
 
