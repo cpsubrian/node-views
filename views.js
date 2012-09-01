@@ -442,7 +442,7 @@ Views.prototype._processHelpers = function(req, res, conf, callback) {
       views._helpers[match].forEach(function(helper) {
         tasks.push(function(done) {
           if (typeof helper === 'function') {
-            helper.call(views, function(err, data) {
+            helper.call(views, req, res, function(err, data) {
               if (data) {
                 helpers.push(data);
               }

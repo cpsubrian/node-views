@@ -58,7 +58,7 @@ describe('Rendering & Helpers', function() {
   });
 
   it('should be able to render templates with dynamic helpers', function(done) {
-    views.helper(function(cb) {
+    views.helper(function(req, res, cb) {
       cb(null, {name: 'Michelangelo'});
     });
     server.on('request', function(req, res) {
@@ -167,7 +167,7 @@ describe('Rendering & Helpers', function() {
         };
 
     views.helper(data);
-    views.helper(function(cb) {
+    views.helper(function(req, res, cb) {
       cb(null, {
         weapons: {
           raph: 'sai'
