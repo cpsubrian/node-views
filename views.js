@@ -19,7 +19,19 @@ exports.middleware = function(root, options) {
   var views = new Views(options);
   views.register(root);
   return function(req, res, next) {
-    res.render = views.render.bind(views, req, res);
+    function renderCallback(err, str) {
+      if (err) {
+        views.log(err);
+        return res.renderStatus(500);
+      }
+      res.writeHead(200, {"Content-Type": "text/html"});
+      res.write(str);
+      res.end();
+    }
+    res.render = function(view, options) {
+      options = options || {};
+      views.render.call(views, req, res, view, options, renderCallback);
+    };
     res.renderStatus = views.renderStatus.bind(views, req, res);
     next();
   };
@@ -34,8 +46,21 @@ exports.flatiron = function(root, options) {
       app.views.register(root);
       if (app.router) {
         app.router.attach(function() {
-          this.render = views.render.bind(views, this.req, this.res);
-          this.renderStatus = views.renderStatus.bind(views, this.req, this.res);
+          var router = this;
+          function renderCallback(err, str) {
+            if (err) {
+              views.log(err);
+              return router.renderStatus(500);
+            }
+            router.res.writeHead(200, {"Content-Type": "text/html"});
+            router.res.write(str);
+            router.res.end();
+          }
+          this.render = function(view, options) {
+            options = options || {};
+            views.render.call(views, router.req, router.res, view, options, renderCallback);
+          };
+          this.renderStatus = views.renderStatus.bind(views, router.req, router.res);
         });
       }
     }
@@ -63,6 +88,15 @@ function Views(options) {
   this._cache = {};
   this._partials = {};
 }
+
+/**
+ * Log output unless silent.
+ */
+Views.prototype.log = function() {
+  if (!this.conf.get('silent')) {
+    console.log.apply(console, arguments);
+  }
+};
 
 /**
  * Cached url parser.
@@ -127,26 +161,7 @@ Views.prototype.render = function(req, res, view, options, cb) {
 
   // Default render callback.
   cb = cb || function(err, str) {
-    var layout = conf.get('layout'),
-        layoutConf = clone(defaults),
-        template;
-
-    layoutConf.push(conf.deep());
-    layoutConf.unshift({content: str, layout: layout});
-
-    // If we have a layout, and this is not the layout, render this
-    // content inside the layout.
-    if (layout && view !== layout) {
-      try {
-        views.render(req, res, layout, layoutConf.deep());
-        return;
-      }
-      catch (e) {
-        if (e.code !== 'ENOENT') {
-          throw e;
-        }
-      }
-    }
+    if (err) throw err;
 
     // Fallback to writing the content as html.
     res.writeHead(200, {"Content-Type": "text/html"});
@@ -155,20 +170,40 @@ Views.prototype.render = function(req, res, view, options, cb) {
   };
 
   // Find the full path to the template.
-  var template = views.find(view, conf);
-  if (template) {
-    // Process view helpers.
+  views.find(view, conf, function(err, template) {
+    if (err) return cb(err);
     views._processHelpers(req, res, conf, function(err) {
-      if (err) throw err;
+      if (err) return cb(err);
       views._processPartials(req, res, conf, function(err) {
-        if (err) throw err;
-        cons[conf.get('engine')](template, conf.deep(), cb);
+        if (err) return cb(err);
+        cons[conf.get('engine')](template, conf.deep(), function(err, str) {
+          if (err) return cb(err);
+
+          var layout = conf.get('layout'),
+              layoutConf = clone(defaults),
+              template;
+
+          layoutConf.push(conf.deep());
+          layoutConf.unshift({content: str, layout: layout});
+
+          // If we have a layout, and this is not the layout, render this
+          // content inside the layout.
+          if (layout && view !== layout) {
+            try {
+              views.render(req, res, layout, layoutConf.deep(), cb);
+              return;
+            }
+            catch (err) {
+              if (err.code !== 'ENOENT') {
+                return cb(err);
+              }
+            }
+          }
+          cb(null, str);
+        });
       });
     });
-  }
-  else {
-    cb(new Error('Could not find the requested view: ' + view));
-  }
+  });
 };
 
 /**
@@ -276,8 +311,9 @@ Views.prototype.register = function(prefix, root, opts) {
  * @param target {String} A namespaced (prefix) path to a view.
  * @param opts {Object} An options object that will have the namespace
  *   defaults merged in.
+ * @param [cb] {Function} (err, path) Callback to receive the path.
  */
-Views.prototype.find = function(target, conf) {
+Views.prototype.find = function(target, conf, cb) {
   var key, check, namespace, regex, full, ext, tempOpts;
   var reg = this._registry;
   var cache = this._cache;
@@ -320,12 +356,14 @@ Views.prototype.find = function(target, conf) {
     // Add the namespace default options.
     conf.push(cache[key].opts);
 
-    // Return the path to the view.
+    if (cb) return cb(null, cache[key].path);
     return cache[key].path;
   }
   else {
     var err = new Error('No registered views matched the path: ' + target);
     err.code = 'ENOENT';
+
+    if (cb) return cb(err);
     throw err;
   }
 };
