@@ -415,12 +415,19 @@ Views.prototype.findDir = function(target) {
  * Register a views helper.
  *
  * A helper can either be an object literal that will be merged with the
- * other template data, or a function. Function ('dynamic') helpers allow
+ * other template data, or a function. Dynamic helper functions allow
  * you to add template data based on a request.
  *
- * Helper functions will be called in the router scope (this.req, this.res,
- * this.app) during the view rendering phase.  Helper funtions accept a
- * callback that should be called with the arguments `callback(err, data)`.
+ * Dynamic helper functions will be called in the router scope (this.req,
+ * this.res) during the view rendering phase. Helper funtions must accept a
+ * callback to call with the arguments `callback(err, data)`.
+ *
+ * ####Example dynamic helper function:
+ *
+ *     function (req, res, callback){
+ *       var user = req.user;
+ *       return callback(null, { user: user });
+ *     }
  *
  * @param [match] {String|RegExp} If specified, the helper will only be
  *   applied for urls that match this pattern.
@@ -461,7 +468,7 @@ Views.prototype.clearHelpers = function(match) {
 };
 
 /**
- * Process views helpers.  Shoud be invoked in the 'router' scope.
+ * Process views helpers.  Should be invoked in the 'router' scope.
  *
  * @param  templateData {Object} Template data to be extended.
  * @param  [url] {String|RegExp} Limit to helpers that match this url.
