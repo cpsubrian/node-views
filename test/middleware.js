@@ -6,13 +6,13 @@ var assert = require('assert'),
     lib = require('../');
 
 describe('Middleware', function() {
-  var port = 5000,
-      server;
+  var port = 5000, server, views;
 
   // Create a fresh server and registry before each test.
   beforeEach(function(done) {
     server = http.createServer();
-    middler(server).add(lib.middleware(path.join(__dirname, 'fixtures/views'), {silent: true}));
+    views = lib.createRegistry(path.join(__dirname, 'fixtures/views'), {silent: true});
+    middler(server).add(lib.middleware(views));
     server.listen(port, done);
   });
 

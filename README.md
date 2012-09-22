@@ -25,10 +25,11 @@ Usage
 ```js
 var middler = require('middler'),
     views = require('views'),
-    server = require('http').createServer();
+    server = require('http').createServer(),
+    registry = views.createRegistry(__dirname + '/views', {}); // <-- Your views directory
 
 middler(server)
-  .add(views.middleware(__dirname + '/views')) // <-- Your views directory
+  .add(views.middleware(registry))
   .add(function(req, res, next) {
     // The middleware exposes res.render() and res.renderStatus()
     res.render('index', {title: 'My Middler Example', name: 'Brian'});

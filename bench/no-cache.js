@@ -1,15 +1,16 @@
 var middler = require('middler'),
     http = require('http'),
     views = require('../'),
-    server;
+    server,
+    registry;
 
 exports.version = require(require('path').resolve(__dirname, '../package.json')).version;
 
 exports.listen = function(options, cb) {
   server = http.createServer();
-
+  registry = views.createRegistry(__dirname + '/views', {});
   middler(server)
-    .add(views.middleware(__dirname + '/views'))
+    .add(views.middleware(registry))
     .add(function(req, res, next) {
       res.render('index', {title: 'Views benchmark - no cache'});
     });

@@ -11,13 +11,11 @@ var path = require('path'),
     _ = require('underscore');
 
 // Create a views registry to use manually.
-exports.createRegistry = function(options) {
-  return new Views(options);
+exports.createRegistry = function(root, options) {
+  return new Views(root, options);
 };
 // Use a views registry as middleware.  Adds res.render() and res.renderStatus()
-exports.middleware = function(root, options) {
-  var views = new Views(options);
-  views.register(root);
+exports.middleware = function(views) {
   return function(req, res, next) {
     function renderCallback(err, str) {
       if (err) {
@@ -42,8 +40,7 @@ exports.flatiron = function(root, options) {
   return {
     attach: function() {
       var app = this;
-      var views = app.views = new Views(options);
-      app.views.register(root);
+      var views = app.views = new Views(root, options);
       if (app.router) {
         app.router.attach(function() {
           var router = this;
@@ -71,8 +68,13 @@ exports.Views = Views;
 /**
  * Views constructor.
  */
-function Views(options) {
+function Views(root, options) {
   this.conf = new ProtoListDeep();
+
+  if (!options) {
+    options = root;
+    root = null;
+  }
   if (options) {
     this.conf.push(options);
   }
@@ -87,6 +89,10 @@ function Views(options) {
   this._registry = [];
   this._cache = {};
   this._partials = {};
+
+  if (root) {
+    this.register(root);
+  }
 }
 
 /**
