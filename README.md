@@ -26,7 +26,7 @@ Usage
 var middler = require('middler'),
     views = require('views'),
     server = require('http').createServer(),
-    registry = views.createRegistry(__dirname + '/views', {}); // <-- Your views directory
+    registry = views.createRegistry(__dirname + '/views'); // <-- Your views directory
 
 middler(server)
   .add(views.middleware(registry))

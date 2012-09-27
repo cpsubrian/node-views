@@ -71,7 +71,7 @@ exports.Views = Views;
 function Views(root, options) {
   this.conf = new ProtoListDeep();
 
-  if (!options) {
+  if (!options && (typeof root !== 'string')) {
     options = root;
     root = null;
   }
