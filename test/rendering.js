@@ -219,4 +219,14 @@ describe('Rendering & Helpers', function() {
       done();
     });
   });
+  it('should be able to send an appropriate status code when rendering a status code template', function(done) {
+    server.on('request', function(req, res) {
+      views.renderStatus(req, res, 404, 'Oh dear! Page not found');
+    });
+    request('http://localhost:' + port + '/', function(err, res, body) {
+      assert.ifError(err);
+      assert.equal(res.statusCode, 404);
+      done();
+    });
+  });
 });
