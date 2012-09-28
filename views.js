@@ -170,7 +170,7 @@ Views.prototype.render = function(req, res, view, options, cb) {
     if (err) throw err;
 
     // Fallback to writing the content as html.
-    res.writeHead(200, {"Content-Type": "text/html"});
+    res.writeHead(res.statusCode, {"Content-Type": "text/html"});
     res.write(str);
     res.end();
   };
