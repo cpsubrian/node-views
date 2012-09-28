@@ -27,6 +27,7 @@ describe('Middleware', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
+      assert(res.statusCode, 200);
       assert.equal(body, '<html><body>Greeting:<h1>Hello Donatello</h1></body></html>', 'template was rendered incorrectly');
       done();
     });
@@ -38,7 +39,7 @@ describe('Middleware', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert.equal(res.statusCode, 500);
+      assert(res.statusCode, 500);
       done();
     });
   });

@@ -30,6 +30,7 @@ describe('Registry', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
+      assert(res.statusCode, 200);
       assert.equal(body, '<html><body><h1>Hi Splinter</h1></body></html>', 'template was rendered incorrectly');
       done();
     });
@@ -45,6 +46,7 @@ describe('Registry', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
+      assert(res.statusCode, 200);
       assert.equal(body, '<html><body><h1>Hey Shredder</h1></body></html>', 'template was rendered incorrectly');
       done();
     });
