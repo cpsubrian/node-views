@@ -34,6 +34,18 @@ describe('Flatiron', function() {
     });
   });
 
+  it('should be able to render status code templates', function(done) {
+    app.router.get('/', function() {
+      this.renderStatus(404);
+    });
+    request('http://localhost:' + port + '/', function(err, res, body) {
+      assert.ifError(err);
+      assert(res.statusCode, 404);
+      assert.equal(body, '<html><body><h1>404</h1><p>404 - Page not found</p></body></html>');
+      done();
+    });
+  });
+
   it('should render a 500 if the template cannot be found', function(done) {
     app.router.get('/', function() {
       this.render('nothere', {name: 'Donatello', optional: 'Greeting:'});
