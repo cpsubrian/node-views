@@ -29,7 +29,7 @@ describe('Partials', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 200);
+      assert.equal(res.statusCode, 200);
       assert.equal(body, '<html><body><h1>Hello Casey Jones</h1></body></html>', 'template was rendered incorrectly');
       done();
     });

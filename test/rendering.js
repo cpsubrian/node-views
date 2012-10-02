@@ -29,7 +29,7 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 200);
+      assert.equal(res.statusCode, 200);
       assert.equal(body, '<html><body><h1>Hello Leonardo</h1></body></html>', 'template was rendered incorrectly');
       done();
     });
@@ -41,7 +41,7 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 200);
+      assert.equal(res.statusCode, 200);
       assert.equal(body, '<html><body>Greeting:<h1>Hello Donatello</h1></body></html>', 'template was rendered incorrectly');
       done();
     });
@@ -54,7 +54,7 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 200);
+      assert.equal(res.statusCode, 200);
       assert.equal(body, '<html><body><h1>Hello Donatello</h1></body></html>', 'template was rendered incorrectly');
       done();
     });
@@ -69,7 +69,7 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 200);
+      assert.equal(res.statusCode, 200);
       assert.equal(body, '<html><body><h1>Hello Michelangelo</h1></body></html>', 'template was rendered incorrectly');
       done();
     });
@@ -81,7 +81,7 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 200);
+      assert.equal(res.statusCode, 200);
       assert.equal(body, '<h1>Hello Raphael</h1>', 'template was rendered incorrectly');
       done();
     });
@@ -93,7 +93,7 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 200);
+      assert.equal(res.statusCode, 200);
       assert.equal(body, '<html><body><div><h1>Hello Raphael</h1></div></body></html>', 'template was rendered incorrectly');
       done();
     });
@@ -107,12 +107,12 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/hey', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 200);
+      assert.equal(res.statusCode, 200);
       assert.equal(body, '<html><body><h1>Hello Donatello</h1></body></html>', 'template was rendered incorrectly');
 
       request('http://localhost:' + port + '/', function(err, res, body) {
         assert.ifError(err);
-        assert(res.statusCode, 200);
+        assert.equal(res.statusCode, 200);
         assert.equal(body, '<html><body><h1>Hello Leonardo</h1></body></html>', 'template was rendered incorrectly');
         done();
       });
@@ -127,12 +127,12 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/hello', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 200);
+      assert.equal(res.statusCode, 200);
       assert.equal(body, '<html><body><h1>Hello Donatello</h1></body></html>', 'template was rendered incorrectly');
 
       request('http://localhost:' + port + '/', function(err, res, body) {
         assert.ifError(err);
-        assert(res.statusCode, 200);
+        assert.equal(res.statusCode, 200);
         assert.equal(body, '<html><body><h1>Hello Leonardo</h1></body></html>', 'template was rendered incorrectly');
         done();
       });
@@ -153,7 +153,7 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/character', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 200);
+      assert.equal(res.statusCode, 200);
       assert.deepEqual(body, JSON.stringify(data));
       done();
     });
@@ -204,7 +204,7 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 404);
+      assert.equal(res.statusCode, 404);
       assert.equal(body, '<html><body><h1>404</h1><p>404 - Page not found</p></body></html>');
       done();
     });
@@ -216,7 +216,7 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 403);
+      assert.equal(res.statusCode, 403);
       assert.equal(body, '403 - Access denied');
       done();
     });
@@ -228,7 +228,7 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 500);
+      assert.equal(res.statusCode, 500);
       assert.equal(body, 'Opps! Something broke!');
       done();
     });
@@ -240,7 +240,7 @@ describe('Rendering & Helpers', function() {
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
       assert.ifError(err);
-      assert(res.statusCode, 404);
+      assert.equal(res.statusCode, 404);
       done();
     });
   });
