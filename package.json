@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/cpsubrian/views.git"
+    "url": "git://github.com/cpsubrian/node-views.git"
   },
   "dependencies": {
     "async": "~0.1.22",
