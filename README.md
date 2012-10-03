@@ -22,6 +22,7 @@ See [./examples](https://github.com/cpsubrian/node-views/tree/master/examples). 
 Usage
 -----
 **Use with [middler](http://github.com/carlos8f/node-middler)**
+
 ```js
 var middler = require('middler'),
     views = require('views'),
@@ -41,6 +42,7 @@ server.listen(3000, function() {
 ```
 
 **Use with [flatiron](http://flatironjs.org/)**
+
 ```js
 var flatiron = require('flatiron'),
     app = flatiron.app,
@@ -61,6 +63,7 @@ app.start(3000, function() {
 ```
 
 **Use the API manually**
+
 ```js
 var path = require('path'),
     http = require('http');
