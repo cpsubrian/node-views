@@ -100,8 +100,8 @@ describe('Rendering & Helpers', function() {
   });
 
   it('should respect String path-specific helpers', function(done) {
-    views.helper('/hey', {name: 'Donatello'});
     views.helper({name: 'Leonardo'});
+    views.helper('/hey', {name: 'Donatello'});
     server.on('request', function(req, res) {
       views.render(req, res, 'hello');
     });
@@ -120,8 +120,8 @@ describe('Rendering & Helpers', function() {
   });
 
   it('should respect RegExp path-specific helpers', function(done) {
-    views.helper(/^\/hello$/, {name: 'Donatello'});
     views.helper({name: 'Leonardo'});
+    views.helper(/^\/hello$/, {name: 'Donatello'});
     server.on('request', function(req, res) {
       views.render(req, res, 'hello');
     });

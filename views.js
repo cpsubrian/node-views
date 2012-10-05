@@ -495,13 +495,13 @@ Views.prototype._processHelpers = function(req, res, conf, callback) {
           if (typeof helper === 'function') {
             helper.call(views, req, res, function(err, data) {
               if (data) {
-                helpers.push(data);
+                helpers.unshift(data);
               }
               done(err);
             });
           }
           else {
-            helpers.push(helper);
+            helpers.unshift(helper);
             done(null);
           }
         });
