@@ -88,7 +88,6 @@ function Views(root, options) {
   this._helpers = {};
   this._registry = [];
   this._cache = {};
-  this._partials = {};
 
   if (root) {
     this.register(root);
@@ -180,33 +179,30 @@ Views.prototype.render = function(req, res, view, options, cb) {
     if (err) return cb(err);
     views._processHelpers(req, res, conf, function(err) {
       if (err) return cb(err);
-      views._processPartials(req, res, conf, function(err) {
+      cons[conf.get('engine')](template, conf.deep(), function(err, str) {
         if (err) return cb(err);
-        cons[conf.get('engine')](template, conf.deep(), function(err, str) {
-          if (err) return cb(err);
 
-          var layout = conf.get('layout'),
-              layoutConf = clone(defaults),
-              template;
+        var layout = conf.get('layout'),
+            layoutConf = clone(defaults),
+            template;
 
-          layoutConf.push(conf.deep());
-          layoutConf.unshift({content: str, layout: layout});
+        layoutConf.push(conf.deep());
+        layoutConf.unshift({content: str, layout: layout});
 
-          // If we have a layout, and this is not the layout, render this
-          // content inside the layout.
-          if (layout && view !== layout) {
-            try {
-              views.render(req, res, layout, layoutConf.deep(), cb);
-              return;
-            }
-            catch (err) {
-              if (err.code !== 'ENOENT') {
-                return cb(err);
-              }
+        // If we have a layout, and this is not the layout, render this
+        // content inside the layout.
+        if (layout && view !== layout) {
+          try {
+            views.render(req, res, layout, layoutConf.deep(), cb);
+            return;
+          }
+          catch (err) {
+            if (err.code !== 'ENOENT') {
+              return cb(err);
             }
           }
-          cb(null, str);
-        });
+        }
+        cb(null, str);
       });
     });
   });
@@ -298,9 +294,6 @@ Views.prototype.register = function(prefix, root, opts) {
 
     // Clear the cache.
     cache = {};
-
-    // Register the default partials location.
-    views.partials('partials');
   }
   else {
     throw new Error('Path does not exist for view namespace: ' + prefix);
@@ -540,128 +533,4 @@ Views.prototype._processHelpersJSON = function(data) {
     }
   }
   return data;
-};
-
-/**
- * Register partials.
- *
- * @param [match] {String|RegExp} A string or regex to limit partial rendering
- *   to matching urls.
- * @param source {String} The path to a directory of views.  Registered
- *   namespaces will be honored. The directory will be recursively searched
- *   for views matching options.ext,  and those will be rendered and attached
- *   to the template data as properties matching the filename with the
- *   extension stripped.
- */
-Views.prototype.partials = function(match, source) {
-  var views = this,
-      conf = views.conf,
-      dir, view, parts, assign, last;
-
-  if (arguments.length === 1) {
-    source = match;
-    match = /.*/;
-  }
-
-  match = views._stringifyPath(match);
-  views._partials[match] = views._partials[match] || {};
-
-  // Get the full path to the source (apply registered namespace).
-  dir = views.findDir(source);
-  if (dir) {
-    glob.sync(dir + '/**/*.*').forEach(function(file) {
-      file = file.replace(dir + '/', '');
-      view = file.replace('.' + conf.get('ext'), '');
-      parts = view.replace(new RegExp(dir + '\/?'), '').split('/');
-
-      assign = views._partials[match];
-      last = parts.pop();
-      parts.forEach(function(part) {
-        assign[part] = assign[part] || {};
-        assign = assign[part];
-      });
-      assign[last] = path.join(dir, file);
-    });
-  }
-};
-
-/**
- * Process the app partials, rendering them and merging them with the passed
- * templateData object.
- *
- * Should be invoked in the router scope.
- *
- * @param templateData {Object} The template data object to extend.
- * @param callback {Function} A callback to once the partials have been
- *   processed.
- */
-Views.prototype._processPartials = function(req, res, conf, callback) {
-  var views = this,
-      tasks = [],
-      reqPath = views._parseUrl(req.url).pathname;
-
-  // Check for cached partials for this requests so we don't run
-  // them more than once.
-  if (req._partialsData) {
-    conf.push(clone(req._partialsData));
-    return callback(null);
-  }
-
-  // Loop through partials and render the ones that match the req url.
-  Object.keys(views._partials).forEach(function(match) {
-    var partials = views._partials[match];
-    if (reqPath.match(new RegExp(match))) {
-      tasks.push(function(done) {
-        views._renderPartials(partials, conf, done);
-      });
-    }
-  });
-  if (tasks.length) {
-    async.parallel(tasks, function(err, results) {
-      if (err) throw err;
-      req._partialsData = {};
-      results.forEach(function(result) {
-        _.defaults(req._partialsData, result);
-      });
-      conf.push(clone(req._partialsData));
-      return callback(err);
-    });
-  }
-  else {
-    return callback(null);
-  }
-};
-
-/**
- * Recursively loop through partials and render them.
- *
- * @param  partials {Object} The top-level partials to render.
- * @param  templateData {Object} The template data object to extend.
- * @param  callback {Function} A callback to invoke after all the partials
- *   have been rendered and merged into the template data.
- */
-Views.prototype._renderPartials = function(partials, conf, callback) {
-  var views = this,
-      defaultConf = clone(this.conf),
-      tasks = {};
-
-  Object.keys(partials).forEach(function(key) {
-    var partial = partials[key];
-    if (typeof partial === 'object') {
-      // Recurse
-      tasks[key] = function(done) {
-        views._renderPartials(partial, conf, done);
-      };
-    }
-    else {
-      // Render
-      tasks[key] = function(done) {
-        cons[defaultConf.get('engine')](partial, conf.deep(), done);
-      };
-    }
-  });
-
-  async.parallel(tasks, function(err, results) {
-    callback(null, results);
-  });
 };

@@ -1,9 +1,11 @@
 var assert = require('assert'),
     path = require('path'),
+    fs = require('fs'),
     request = require('request'),
     http = require('http'),
     ProtoListDeep = require('proto-list-deep'),
-    lib = require('../');
+    lib = require('../'),
+    Handlebars = require('handlebars');
 
 describe('Partials', function() {
   var port = 5000,
@@ -23,7 +25,8 @@ describe('Partials', function() {
     server.close(done);
   });
 
-  it('should render templates with partials applied', function(done) {
+  it('should support using handlebar\'s native partials', function(done) {
+    Handlebars.registerPartial('name', fs.readFileSync(path.join(__dirname, 'fixtures/views/partials/name.hbs'), 'utf8'));
     server.on('request', function(req, res) {
       views.render(req, res, 'hello-turtle', {first: 'Casey', last: 'Jones'});
     });
