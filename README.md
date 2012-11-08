@@ -11,7 +11,6 @@ Features
 - Render templates with or without layouts
 - Use any templating engine that [consolidate.js](https://github.com/visionmedia/consolidate.js) supports
 - Supports 'helpers' (static or dynamically generated data exposed to templates)
-- Supports partials (register one or more directories that will be recursively rendered and made available in templates)
 - Provides an easy-to-use middleware compatible with connect or middler.
 - Provides a plugin compatible with flatiron http applications.
 
@@ -81,10 +80,6 @@ views.register(path.join(__dirname, 'views'));
 // Register an alternate namespace with custom options.
 views.register('jade', path.join(__dirname, 'jade_views'), {ext: 'html', engine: 'jade'});
 
-// By default a 'partials' subdirectory in each namespace will be used, however,
-// you can register additional partials directories.
-views.partials('extra_stuff');
-
 // Now you can use render or renderStatus inside your http request handlers.
 var server = http.createServer(function(req, res) {
   if (req.url === '/') {
@@ -102,6 +97,23 @@ var server = http.createServer(function(req, res) {
 });
 server.listen(8080);
 ```
+
+Partials
+--------
+
+Views 0.2.x supported 'partials' by pre-rendering templates that were
+registered with `view.partials()`.  This functionality was removed in
+0.3.0 in favor of utilizing native partials support provided by the
+templating engines themselves. This was done for a few reasons:
+
+- Performance. Previously, all registered partials were re-rendered for every
+request, whether or not they were used.
+- Recursion. To avoid crazy performance costs, partials were cached per
+request, but this meant ceratin recursive use-cases for partials were
+broken.
+- Simplicity. Partials are complicated. Its seemed prudent to piggy back on the
+great work being done in consolidate.js and template engines rather than
+reinvent the wheel.
 
 - - -
 
