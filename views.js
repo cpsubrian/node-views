@@ -22,7 +22,9 @@ exports.middleware = function(views) {
         views.log(err);
         return res.renderStatus(500);
       }
-      res.writeHead(res.statusCode, {"Content-Type": "text/html"});
+      if (!res.getHeader('content-type')) {
+        res.setHeader('content-type', 'text/html');
+      }
       res.write(str);
       res.end();
     }
@@ -49,7 +51,9 @@ exports.flatiron = function(root, options) {
               views.log(err);
               return router.renderStatus(500);
             }
-            router.res.writeHead(router.res.statusCode, {"Content-Type": "text/html"});
+            if (!router.res.getHeader('content-type')) {
+              router.res.setHeader('content-type', 'text/html');
+            }
             router.res.write(str);
             router.res.end();
           }
