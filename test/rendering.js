@@ -159,6 +159,27 @@ describe('Rendering & Helpers', function() {
     });
   });
 
+  it('generated JSON should not contain `</script>`', function(done) {
+    var data = {alert: '<script>alert("hello")</script>'};
+    views.helper({
+      _json_: {
+        character: data
+      }
+    });
+    server.on('request', function(req, res) {
+      if (req.url === '/scripts') {
+        views.render(req, res, 'character', {layout: false});
+      }
+    });
+    request('http://localhost:' + port + '/scripts', function(err, res, body) {
+      assert.ifError(err);
+      assert.equal(res.statusCode, 200);
+      assert(!body.match(/script/));
+      assert.deepEqual(JSON.parse(body.replace(/"\+"/g, '')), data);
+      done();
+    });
+  });
+
   it('should not allow dynamic helpers to modify static helper data', function(done) {
     var ran = false,
         data = {
