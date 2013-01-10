@@ -532,7 +532,9 @@ Views.prototype._processHelpersJSON = function(data) {
   if (data.hasOwnProperty('_json_')) {
     for (var key in data._json_) {
       if (!data.hasOwnProperty(key)) {
-        data[key] = JSON.stringify(data._json_[key]);
+        data[key] = JSON.stringify(data._json_[key])
+          // for security, escape script tags.
+          .replace(/<(\/?)script/g, '<$1scr"+"ipt');
       }
     }
   }
