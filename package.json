@@ -21,7 +21,8 @@
     "mocha": "~1.8.2",
     "handlebars": "~1.0.10",
     "benchmarx": "~0.2.5",
-    "middler": "~0.6.1"
+    "middler": "~0.6.1",
+    "request": "~2.16.0"
   },
   "keywords": [
     "views",
