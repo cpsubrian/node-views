@@ -3,7 +3,6 @@ var assert = require('assert'),
     fs = require('fs'),
     request = require('request'),
     http = require('http'),
-    ProtoListDeep = require('proto-list-deep'),
     lib = require('../'),
     Handlebars = require('handlebars');
 

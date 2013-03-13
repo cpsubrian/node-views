@@ -2,8 +2,8 @@ var assert = require('assert'),
     path = require('path'),
     request = require('request'),
     http = require('http'),
-    ProtoListDeep = require('proto-list-deep'),
-    lib = require('../');
+    lib = require('../'),
+    merge = require('tea-merge');
 
 describe('Rendering & Helpers', function() {
   var port = 5000,
@@ -188,7 +188,7 @@ describe('Rendering & Helpers', function() {
             don: 'bow'
           }
         },
-        result = new ProtoListDeep(),
+        result = {},
         scope = null,
         all = {
           weapons: {
@@ -209,10 +209,12 @@ describe('Rendering & Helpers', function() {
 
     var req = {url: '/'};
     var res = {};
-    views._processHelpers(req, res, result, function(err) {
-      // Trigget cached view helpers cloning and merging.
-      views._processHelpers(req, res, result, function(err) {
-        assert.deepEqual(result.deep(), all);
+    views._processHelpers(req, res, {}, function(err, result) {
+      assert.deepEqual(result, all);
+      assert.notDeepEqual(data, all);
+      // Trigger cached view helpers cloning and merging.
+      views._processHelpers(req, res, {}, function(err, result) {
+        assert.deepEqual(result, all);
         assert.notDeepEqual(data, all);
         done();
       });
@@ -243,7 +245,7 @@ describe('Rendering & Helpers', function() {
     });
   });
 
-  it('should be able to render status code with NO template and a custom message', function(done) {
+  it('should be able to render status code with NO template and a message', function(done) {
     server.on('request', function(req, res) {
       views.renderStatus(req, res, 500, 'Opps! Something broke!');
     });

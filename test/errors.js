@@ -2,7 +2,6 @@ var assert = require('assert'),
     path = require('path'),
     request = require('request'),
     http = require('http'),
-    ProtoListDeep = require('proto-list-deep'),
     lib = require('../');
 
 describe('Errors', function() {

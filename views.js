@@ -7,8 +7,7 @@ var path = require('path'),
     clone = require('clone'),
     cons = require('consolidate'),
     glob = require('glob'),
-    ProtoListDeep = require('proto-list-deep'),
-    _ = require('underscore');
+    merge = require('tea-merge');
 
 // Create a views registry to use manually.
 exports.createRegistry = function(root, options) {
@@ -73,20 +72,20 @@ exports.Views = Views;
  * Views constructor.
  */
 function Views(root, options) {
-  this.conf = new ProtoListDeep();
+  this.conf = {};
 
   if (!options && (typeof root !== 'string')) {
     options = root;
     root = null;
   }
   if (options) {
-    this.conf.push(options);
+    this.conf = options;
   }
-  this.conf.push({
+  this.conf = merge({}, {
     layout: 'layout',
     ext: 'hbs',
     engine: 'handlebars'
-  });
+  }, this.conf);
 
   this._parsedUrls = {};
   this._helpers = {};
@@ -102,7 +101,7 @@ function Views(root, options) {
  * Log output unless silent.
  */
 Views.prototype.log = function() {
-  if (!this.conf.get('silent')) {
+  if (!this.conf.silent) {
     console.log.apply(console, arguments);
   }
 };
@@ -149,7 +148,7 @@ Views.prototype._stringifyPath = function(path) {
  */
 Views.prototype.render = function(req, res, view, options, cb) {
   var views = this,
-      defaults = clone(this.conf),
+      defaults = this.conf,
       conf = clone(this.conf),
       tasks = [];
 
@@ -165,7 +164,7 @@ Views.prototype.render = function(req, res, view, options, cb) {
 
   // Merge options into conf.
   if (options) {
-    conf.unshift(clone(options));
+    merge(conf, options);
   }
 
   // Default render callback.
@@ -181,23 +180,20 @@ Views.prototype.render = function(req, res, view, options, cb) {
   // Find the full path to the template.
   views.find(view, conf, function(err, template) {
     if (err) return cb(err);
-    views._processHelpers(req, res, conf, function(err) {
+    views._processHelpers(req, res, conf, function(err, conf) {
       if (err) return cb(err);
-      cons[conf.get('engine')](template, conf.deep(), function(err, str) {
+      cons[conf.engine](template, clone(conf), function(err, str) {
         if (err) return cb(err);
 
-        var layout = conf.get('layout'),
-            layoutConf = clone(defaults),
+        var layout = conf.layout,
+            layoutConf = merge(conf, defaults, {content: str, layout: layout}),
             template;
-
-        layoutConf.push(conf.deep());
-        layoutConf.unshift({content: str, layout: layout});
 
         // If we have a layout, and this is not the layout, render this
         // content inside the layout.
         if (layout && view !== layout) {
           try {
-            views.render(req, res, layout, layoutConf.deep(), cb);
+            views.render(req, res, layout, layoutConf, cb);
             return;
           }
           catch (err) {
@@ -321,17 +317,10 @@ Views.prototype.find = function(target, conf, cb) {
   var reg = this._registry;
   var cache = this._cache;
 
-  // Convert conf to a ProtoListDeep if its an object literal.
-  if (!(conf instanceof ProtoListDeep)) {
-    var temp = clone(conf);
-    conf = new ProtoListDeep();
-    conf.push(temp);
-  }
-
   // Create a unique key for this target (vary on extension if supplied).
   key = target;
-  if (conf.get('ext')) {
-    key = key + ':' + conf.get('ext');
+  if (conf.ext) {
+    key = key + ':' + conf.ext;
   }
 
   // Check if the path exsts in the cache.
@@ -342,7 +331,7 @@ Views.prototype.find = function(target, conf, cb) {
       // Check for existence of the namespace prefix.
       if (target.indexOf(namespace.prefix) === 0) {
         regex = new RegExp(namespace.prefix + '\/?');
-        ext = conf.get('ext') || namespace.opts.ext;
+        ext = conf.ext || namespace.opts.ext;
         full = path.resolve(namespace.root, target.replace(regex, '')) + '.' + ext;
         if (existsSync(full)) {
           cache[key] = {
@@ -356,16 +345,12 @@ Views.prototype.find = function(target, conf, cb) {
   }
 
   if (cache[key]) {
-    // Add the namespace default options.
-    conf.push(cache[key].opts);
-
     if (cb) return cb(null, cache[key].path);
     return cache[key].path;
   }
   else {
     var err = new Error('No registered views matched the path: ' + target);
     err.code = 'ENOENT';
-
     if (cb) return cb(err);
     throw err;
   }
@@ -465,9 +450,9 @@ Views.prototype.clearHelpers = function(match) {
 };
 
 /**
- * Process views helpers.  Should be invoked in the 'router' scope.
+ * Process views helpers.
  *
- * @param  templateData {Object} Template data to be extended.
+ * @param  templateData {Object} Template data to modify and invoke the callback with.
  * @param  [url] {String|RegExp} Limit to helpers that match this url.
  * @param  callback {Function} (err) Callback to be invoked after all registered
  *   helpers have been processed.
@@ -476,13 +461,13 @@ Views.prototype._processHelpers = function(req, res, conf, callback) {
   var views = this,
       tasks = [],
       reqPath = this._parseUrl(req.url).pathname,
-      helpers = new ProtoListDeep();
+      helpers = {};
 
   // Check for cached helpers data for this requests so we don't run
   // them more than once.
   if (req._viewsHelpersData) {
-    conf.push(clone(req._viewsHelpersData));
-    return callback(null);
+    conf = merge({}, req._viewsHelpersData, conf);
+    return callback(null, conf);
   }
 
   Object.keys(views._helpers).forEach(function(match) {
@@ -492,13 +477,13 @@ Views.prototype._processHelpers = function(req, res, conf, callback) {
           if (typeof helper === 'function') {
             helper.call(views, req, res, function(err, data) {
               if (data) {
-                helpers.unshift(data);
+                merge(helpers, data);
               }
               done(err);
             });
           }
           else {
-            helpers.unshift(helper);
+            merge(helpers, helper);
             done(null);
           }
         });
@@ -508,10 +493,10 @@ Views.prototype._processHelpers = function(req, res, conf, callback) {
 
   async.parallel(tasks, function(err) {
     if (err) return callback(err);
-    var processed = views._processHelpersJSON(helpers.deep());
-    conf.push(processed);
+    var processed = views._processHelpersJSON(helpers);
+    conf = merge({}, processed, conf);
     req._viewsHelpersData = processed;
-    callback(err);
+    callback(err, conf);
   });
 };
 

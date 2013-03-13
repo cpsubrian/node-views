@@ -12,7 +12,7 @@ exports.listen = function(options, cb) {
   middler(server)
     .add(views.middleware(registry))
     .add(function(req, res, next) {
-      res.render('index', {title: 'Views benchmark - no cache'});
+      res.render('index', {title: 'Views benchmark - with cache'});
     });
 
   server.listen(0, function() {
