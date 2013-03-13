@@ -13,6 +13,7 @@ var path = require('path'),
 exports.createRegistry = function(root, options) {
   return new Views(root, options);
 };
+
 // Use a views registry as middleware.  Adds res.render() and res.renderStatus()
 exports.middleware = function(views) {
   return function(req, res, next) {
@@ -35,6 +36,8 @@ exports.middleware = function(views) {
     next();
   };
 };
+
+// Export the Views class.
 exports.Views = Views;
 
 /**
@@ -79,13 +82,10 @@ Views.prototype.log = function() {
  * Cached url parser.
  */
 Views.prototype._parseUrl = function(urlToParse) {
-  var parsed = this._parsedUrls[urlToParse];
-  if (parsed) {
-    return parsed;
+  if (!this._parsedUrls[urlToParse]) {
+    this._parsedUrls[urlToParse] = url.parse(urlToParse);
   }
-  else {
-    return this._parsedUrls[urlToParse] = url.parse(urlToParse);
-  }
+  return this._parsedUrls[urlToParse];
 };
 
 /**
@@ -118,7 +118,7 @@ Views.prototype._stringifyPath = function(path) {
 Views.prototype.render = function(req, res, view, options, cb) {
   var views = this,
       defaults = this.conf,
-      conf = clone(this.conf),
+      conf = clone(this.conf, false),
       tasks = [];
 
   // Support callback function as second argument.
@@ -151,11 +151,11 @@ Views.prototype.render = function(req, res, view, options, cb) {
     if (err) return cb(err);
     views._processHelpers(req, res, conf, function(err, conf) {
       if (err) return cb(err);
-      cons[conf.engine](template, clone(conf), function(err, str) {
+      cons[conf.engine](template, clone(conf, false), function(err, str) {
         if (err) return cb(err);
 
         var layout = conf.layout,
-            layoutConf = merge(conf, defaults, {content: str, layout: layout}),
+            layoutConf = merge({}, conf, defaults, {content: str, layout: layout}),
             template;
 
         // If we have a layout, and this is not the layout, render this
@@ -305,7 +305,7 @@ Views.prototype.find = function(target, conf, cb) {
         if (existsSync(full)) {
           cache[key] = {
             path: full,
-            opts: clone(namespace.opts)
+            opts: clone(namespace.opts, false)
           };
           break;
         }
