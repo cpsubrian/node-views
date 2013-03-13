@@ -1,7 +1,7 @@
 var middler = require('middler'),
     views = require('../../'),
     server = require('http').createServer(),
-    registry = views.createRegistry(__dirname + '/views');
+    registry = views.createRegistry(__dirname + '/views', {cache: true});
 
 middler(server)
   .add(views.middleware(registry))
