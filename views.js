@@ -35,37 +35,6 @@ exports.middleware = function(views) {
     next();
   };
 };
-// Use views registry in a flatiron app. Attaches render() and renderStatus() to
-// router scope.
-exports.flatiron = function(root, options) {
-  return {
-    attach: function() {
-      var app = this;
-      var views = app.views = new Views(root, options);
-      if (app.router) {
-        app.router.attach(function() {
-          var router = this;
-          function renderCallback(err, str) {
-            if (err) {
-              views.log(err);
-              return router.renderStatus(500);
-            }
-            if (!router.res.getHeader('content-type')) {
-              router.res.setHeader('content-type', 'text/html');
-            }
-            router.res.write(str);
-            router.res.end();
-          }
-          this.render = function(view, options) {
-            options = options || {};
-            views.render.call(views, router.req, router.res, view, options, renderCallback);
-          };
-          this.renderStatus = views.renderStatus.bind(views, router.req, router.res);
-        });
-      }
-    }
-  };
-};
 exports.Views = Views;
 
 /**
