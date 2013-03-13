@@ -12,11 +12,27 @@ Features
 - Use any templating engine that [consolidate.js](https://github.com/visionmedia/consolidate.js) supports
 - Supports 'helpers' (static or dynamically generated data exposed to templates)
 - Provides an easy-to-use middleware compatible with connect or middler.
-- Provides a plugin compatible with flatiron http applications.
+
+Changes for 1.x
+---------------
+
+For views 1.x I did some cleanup and optimization. This involved changes that could
+have an impact on your implementation of views.
+
+- Removed built-in support for flatiron.
+- Stopped using proto-list-deep internally, instead opting for tea-merge.
+    - Note: tea-merge is pretty strict about what it will merge together. If
+            you were previously adding complex objects into your conf or helpers
+            you may see merge errors. The only way to resolve this is to make
+            sure your conf and helpers are JavaScript primitives and avoid
+            clashes between object types at the same key.
+- Updated dependency versions. For Handlebars users this should speed up rendering
+  significantly if you turn caching on, as consolidate now appears to use it
+  properly.
 
 Examples
 --------
-See [./examples](https://github.com/cpsubrian/node-views/tree/master/examples). Currently there are examples for how to use Views with Middler and Flatiron.
+See [./examples](https://github.com/cpsubrian/node-views/tree/master/examples).
 
 Usage
 -----
@@ -36,27 +52,6 @@ middler(server)
   });
 
 server.listen(3000, function() {
-  console.log('Listening on http:/localhost:3000');
-});
-```
-
-**Use with [flatiron](http://flatironjs.org/)**
-
-```js
-var flatiron = require('flatiron'),
-    app = flatiron.app,
-    views = require('views');
-
-app.use(flatiron.plugins.http);
-app.use(views.flatiron(__dirname + '/views')); // <-- Your views directory
-
-app.router.get('/', function () {
-  // The plugin exposes this.render() and this.renderStatus() in the
-  // router scope.
-  this.render('index', {title: 'My Flatiron Example', name: 'Brian'});
-});
-
-app.start(3000, function() {
   console.log('Listening on http:/localhost:3000');
 });
 ```
