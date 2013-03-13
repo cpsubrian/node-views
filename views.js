@@ -37,6 +37,9 @@ exports.middleware = function(views) {
   };
 };
 
+// Export consolidate for hackery.
+exports.consolidate = cons;
+
 // Export the Views class.
 exports.Views = Views;
 
