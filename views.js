@@ -19,8 +19,7 @@ exports.middleware = function(views) {
   return function(req, res, next) {
     function renderCallback(err, str) {
       if (err) {
-        views.log(err);
-        return res.renderStatus(500);
+        throw err;
       }
       if (!res.getHeader('content-type')) {
         res.setHeader('content-type', 'text/html');

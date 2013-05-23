@@ -45,13 +45,18 @@ describe('Middleware', function() {
     });
   });
 
-  it('should render a 500 if the template cannot be found', function(done) {
+  it('should throw an error if the template cannot be found', function(done) {
     middleware.add(function(req, res) {
-      res.render('nothere', {name: 'Donatello', optional: 'Greeting:'});
+      try {
+        res.render('nothere', {name: 'Donatello', optional: 'Greeting:'});
+        assert(false, 'Did not throw');
+      }
+      catch (e) {
+        assert.equal(e.code, 'ENOENT');
+        res.renderStatus(500);
+      }
     });
     request('http://localhost:' + port + '/', function(err, res, body) {
-      assert.ifError(err);
-      assert.equal(res.statusCode, 500);
       done();
     });
   });
