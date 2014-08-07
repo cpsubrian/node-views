@@ -1,6 +1,13 @@
 node-views
 ==========
 
+## Atention Views Users
+
+Aug. 7 2014 - I'm passing ownership of the `views` namespace on **npm** to @dougwilson who will be using it for the express community. `1.x` of the published module will be left untouched, so you should be able to continue using it in your dependencies. I look forward to what Doug and the community builds. For those of you with handlebars-specific views needs, I recommend checking out `templ`, which is what I've been using lately.
+
+
+- - -
+
 Views registry and rendering for node.js.
 
 [![build status](https://secure.travis-ci.org/cpsubrian/node-views.png)](http://travis-ci.org/cpsubrian/node-views)
